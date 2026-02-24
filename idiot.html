@@ -3,168 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>STATION #768 | v6.0 APEX</title>
+    <title>NWS YAN API | v6.0 UNIFIED</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --apex-orange: #ff4d00; --safety-green: #00ff9d; --hurricane-red: #ff0033; }
-        body { 
-            background: radial-gradient(circle at center, #0a0a0f 0%, #020205 100%);
-            color: #f0f0f0; font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
+        :root { --nws-blue: #00aaff; --eas-red: #ff0033; }
+        body { background-color: #050505; color: #e2e2e2; font-family: 'Roboto Mono', monospace; -webkit-tap-highlight-color: transparent; }
         .header-font { font-family: 'Orbitron', sans-serif; }
-        .glass {
-            background: rgba(15, 15, 25, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-        }
-        .glow-text { text-shadow: 0 0 10px rgba(255, 77, 0, 0.5); }
+        .glass { background: rgba(20, 20, 30, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .alert-pulse { animation: pulse-red 1.2s infinite; }
-        @keyframes pulse-red { 0%, 100% { border-color: #ff0033; box-shadow: 0 0 10px rgba(255,0,0,0.3); } 50% { border-color: #330000; } }
-        .btn-action { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .btn-action:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
+        @keyframes pulse-red { 0%, 100% { border-color: var(--eas-red); box-shadow: 0 0 10px rgba(255,0,0,0.2); } 50% { border-color: #330000; } }
+        .btn-active:active { transform: scale(0.95); }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen p-4">
 
-    <div id="auth-frame" class="fixed inset-0 flex items-center justify-center bg-[#020205] z-[1000] p-6">
-        <div class="w-full max-w-sm glass p-8 rounded-3xl text-center border border-[#ff4d00]">
-            <h1 class="header-font text-3xl font-black italic tracking-tighter glow-text">APEX #768</h1>
-            <input type="password" id="pin-entry" inputmode="numeric" placeholder="••••" 
-                   class="w-full bg-black/40 border-2 border-zinc-800 rounded-2xl p-4 text-3xl text-center my-6 text-white outline-none focus:border-[#ff4d00]">
-            <button onclick="authorize()" class="w-full bg-[#ff4d00] text-black font-black py-4 rounded-2xl uppercase text-xs tracking-widest">Authorize Station</button>
+    <div id="auth-frame" class="fixed inset-0 flex items-center justify-center bg-black z-[1000]">
+        <div class="w-full max-w-sm glass p-10 rounded-3xl border-2 border-[#00aaff] text-center">
+            <h1 class="header-font text-2xl font-bold text-[#00aaff] mb-8 italic">STATION #768</h1>
+            <input type="password" id="pin-entry" placeholder="••••" class="w-full bg-black border border-zinc-800 p-4 text-3xl text-center rounded-xl mb-6 text-white outline-none">
+            <button onclick="authorize()" class="w-full bg-[#0055aa] py-4 rounded-xl font-bold uppercase tracking-widest">Authorize Uplink</button>
         </div>
     </div>
 
-    <div id="main-interface" class="hidden flex flex-col min-h-screen">
-        <nav class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-zinc-800">
-            <div class="flex flex-col">
-                <span class="header-font text-lg font-black italic">STATION <span class="text-[#ff4d00]">768</span></span>
-                <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-[#00ff9d] animate-pulse"></span><span class="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">DC/FLORIDA LINK LIVE</span></span>
+    <div id="main-interface" class="max-w-6xl mx-auto hidden">
+        <nav class="flex justify-between items-end mb-8 border-b border-zinc-800 pb-4">
+            <div>
+                <h1 class="header-font text-2xl font-bold text-white uppercase italic">NWS <span class="text-[#00aaff]">YAN API</span></h1>
+                <p class="text-[9px] text-zinc-500 uppercase tracking-widest">DC / FLORIDA UNIFIED HUB</p>
             </div>
             <div class="text-right">
-                <p id="uptime-clock" class="header-font text-xs font-bold text-white tracking-widest">00:00:00</p>
+                <span id="uptime-clock" class="text-xs font-bold text-white">00:00:00</span>
             </div>
         </nav>
 
-        <main class="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full space-y-6">
-            <section>
-                <h2 class="header-font text-xs font-bold text-zinc-400 tracking-[0.2em] uppercase italic mb-4">Threat Matrix</h2>
-                <div id="alert-feed" class="space-y-4">
-                    <div class="glass p-8 rounded-3xl text-center text-zinc-600 italic text-sm border-dashed border-2 border-zinc-800">Scanning NWS API Channels...</div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-7">
+                <div id="terminal" class="h-64 glass rounded-xl p-4 overflow-y-auto font-mono text-[10px] text-green-400 mb-6 border-zinc-800">
+                    <div id="log-container" class="flex flex-col-reverse gap-1"></div>
                 </div>
-            </section>
 
-            <section class="space-y-4">
-                <h2 class="header-font text-xs font-bold text-zinc-400 tracking-[0.2em] uppercase italic px-2">Encrypted Stream</h2>
-                <div id="terminal" class="glass rounded-3xl p-5 h-44 overflow-y-auto font-mono text-[10px] leading-relaxed border-zinc-800/50">
-                    <div id="log-container" class="flex flex-col-reverse gap-1.5"></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button onclick="syncUnifiedAPI()" class="glass border-blue-500/30 p-6 rounded-xl btn-active text-blue-400">
+                        <span class="text-xl">📡</span><br><span class="text-[8px] font-bold">API SYNC</span>
+                    </button>
+                    <button onclick="openAdmin()" class="glass border-zinc-700 p-6 rounded-xl btn-active text-zinc-400">
+                        <span class="text-xl">🛡️</span><br><span class="text-[8px] font-bold">ADMIN UI</span>
+                    </button>
+                    <button onclick="triggerPanic()" class="glass border-red-500 p-6 rounded-xl btn-active text-red-500">
+                        <span class="text-xl">🚨</span><br><span class="text-[8px] font-bold">PANIC</span>
+                    </button>
+                    <div class="glass border-green-500/20 p-6 rounded-xl text-center">
+                        <span class="text-[8px] text-zinc-500 uppercase">Status</span><br>
+                        <span class="text-[10px] text-green-500 font-bold">ARMED</span>
+                    </div>
                 </div>
-            </section>
-        </main>
+            </div>
 
-        <div class="glass sticky bottom-0 p-4 border-t border-zinc-800 flex justify-around items-center gap-3">
-            <button onclick="syncAllSectors()" class="btn-action flex-1 py-4 rounded-2xl flex flex-col items-center gap-1 border border-zinc-800/50">
-                <span class="text-xl">📡</span><span class="text-[8px] font-black uppercase tracking-tighter">Sync Matrix</span>
-            </button>
-            <button onclick="triggerPanic()" class="btn-action flex-1 py-4 rounded-2xl flex flex-col items-center gap-1 border border-red-900/30 bg-red-950/10">
-                <span class="text-xl">🚨</span><span class="text-[8px] font-black text-red-500 uppercase tracking-tighter">Panic</span>
-            </button>
+            <div class="lg:col-span-5 flex flex-col h-[600px]">
+                <h3 class="header-font text-xs text-[#00aaff] mb-4 font-bold tracking-widest uppercase italic">Threat Matrix</h3>
+                <div id="alert-feed" class="flex-1 overflow-y-auto space-y-4 pr-2">
+                    <div class="text-center py-20 text-zinc-800 text-xs">Waiting for NWS Handshake...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-area" class="fixed inset-0 bg-black/95 z-[2000] hidden flex items-center justify-center p-6 backdrop-blur-md">
+        <div class="w-full max-w-lg glass p-8 rounded-3xl border border-zinc-800">
+            <h2 class="header-font text-xl text-[#00aaff] uppercase mb-6">Manual Dispatch</h2>
+            <input type="text" id="admin-title" placeholder="TITLE" class="w-full bg-black border border-zinc-800 p-3 rounded-lg text-white mb-4">
+            <textarea id="admin-msg" rows="4" placeholder="MESSAGE..." class="w-full bg-black border border-zinc-800 p-3 rounded-lg text-white mb-6"></textarea>
+            <div class="flex gap-4">
+                <button onclick="dispatchAdminAlert()" class="flex-1 bg-blue-700 py-4 rounded-xl font-bold">DISPATCH</button>
+                <button onclick="closeAdmin()" class="px-6 bg-zinc-800 rounded-xl">ABORT</button>
+            </div>
         </div>
     </div>
 
     <script>
         const PIN = "0083";
+        const ADMIN_PIN = "1337";
         const UPLINK = {
             WEBHOOK: "https://discord.com/api/webhooks/1475098952779956265/XmjswNOWI1xFlybXl7mSgAgHQvMyJr8UALejPWdx7mLSJL8IsUfNDI1cflub9wmBgowG",
-            PUSH_USER: "uswuuq7126iw6if6stqx66ytjzi171",
-            PUSH_TOKEN: "aa9a5wi8ag5pn2uxcg5f6c3acqsg3w",
-            NTFY_TOPIC: "fuckernig"
+            NTFY: "https://ntfy.sh/fuckernig",
+            ROLE: "<@&14749276126260027505>"
         };
 
         function authorize() {
             if (document.getElementById('pin-entry').value === PIN) {
                 document.getElementById('auth-frame').style.display = 'none';
                 document.getElementById('main-interface').classList.remove('hidden');
-                logToTerminal("UPLINK SECURED. POLLING SECTORS: FL, DC-ANZ925.");
-                syncAllSectors();
-                setInterval(syncAllSectors, 120000); // Auto-sync every 2 mins
+                logToTerminal("CONNECTION SECURED TO DC/FLORIDA DATASTREAM.");
+                syncUnifiedAPI();
             }
         }
 
         function logToTerminal(msg) {
             const container = document.getElementById('log-container');
             const entry = document.createElement('div');
-            entry.innerHTML = `<span class="text-zinc-600">[${new Date().toLocaleTimeString()}]</span> <span class="text-[#ff4d00]">></span> <span class="text-zinc-300">${msg}</span>`;
+            entry.innerHTML = `<span class="text-zinc-600">[${new Date().toLocaleTimeString()}]</span> <span class="text-blue-400">>></span> ${msg}`;
             container.appendChild(entry);
         }
 
-        async function syncAllSectors() {
+        async function syncUnifiedAPI() {
             logToTerminal("POLLING NWS SECTORS...");
+            const feed = document.getElementById('alert-feed');
             try {
+                // Fetch Land (FL) and Marine (ANZ925 - Washington OPC)
                 const [fl, dc] = await Promise.all([
                     fetch("https://api.weather.gov/alerts/active?area=FL").then(r => r.json()),
                     fetch("https://api.weather.gov/alerts/active?zone=ANZ925").then(r => r.json())
                 ]);
-                const combined = [...(fl.features || []), ...(dc.features || [])];
-                updateMatrix(combined);
-            } catch (e) { logToTerminal("API ERROR: LINK TIMEOUT."); }
+
+                const alerts = [...(fl.features || []), ...(dc.features || [])];
+                feed.innerHTML = '';
+
+                if (alerts.length === 0) {
+                    feed.innerHTML = '<div class="text-center py-20 text-zinc-700 text-[10px]">NO ACTIVE THREATS IN SECTOR.</div>';
+                    return;
+                }
+
+                alerts.slice(0, 5).forEach(alert => {
+                    const p = alert.properties;
+                    const isExtreme = p.severity === 'Extreme' || p.event.includes('Hurricane');
+                    renderCard(p, isExtreme);
+                    if (isExtreme) broadcastUplink(p);
+                });
+                logToTerminal(`UPLINK SUCCESS: ${alerts.length} TARGETS FOUND.`);
+            } catch (e) { logToTerminal("API ERROR: CONNECTION TIMEOUT."); }
         }
 
-        function updateMatrix(alerts) {
+        function renderCard(p, isExtreme) {
             const feed = document.getElementById('alert-feed');
-            feed.innerHTML = '';
-            
-            if (!alerts.length) {
-                feed.innerHTML = '<div class="glass p-8 rounded-3xl text-center text-zinc-600 italic text-sm italic">No active threats detected.</div>';
-                return;
-            }
-
-            alerts.slice(0, 5).forEach(a => {
-                const p = a.properties;
-                const isExtreme = p.severity === 'Extreme' || p.event.includes('Hurricane');
-                const card = document.createElement('div');
-                card.className = `glass p-6 rounded-[2rem] border-l-4 ${isExtreme ? 'border-red-600 alert-pulse' : 'border-orange-500'} mb-4`;
-                card.innerHTML = `
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[7px] font-black uppercase text-zinc-500">${p.areaDesc.split(';')[0]}</span>
-                        <span class="text-[7px] font-bold text-[#ff4d00] italic">${p.severity}</span>
-                    </div>
-                    <h4 class="text-sm font-black text-white uppercase italic">${p.event}</h4>
-                    <p class="text-[10px] text-zinc-400 mt-2 leading-tight">${p.headline}</p>
-                `;
-                feed.appendChild(card);
-                if (isExtreme) dispatchUplink(p);
-            });
-            logToTerminal(`MATRIX UPDATED: ${alerts.length} TARGETS LOADED.`);
+            const card = document.createElement('div');
+            card.className = `glass p-5 rounded-xl border-l-4 ${isExtreme ? 'alert-pulse border-red-600 bg-red-950/10' : 'border-blue-500'} mb-4`;
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[8px] font-black uppercase text-zinc-500">${p.areaDesc.split(';')[0]}</span>
+                    <span class="text-[8px] font-bold text-white italic">${p.severity}</span>
+                </div>
+                <h4 class="text-xs font-black uppercase italic ${isExtreme ? 'text-red-500' : 'text-white'}">${p.event}</h4>
+                <p class="text-[10px] text-zinc-400 mt-2 leading-tight">${p.headline}</p>
+                <div class="mt-4 p-2 bg-black/40 rounded border border-zinc-800 text-[9px] text-zinc-300">
+                    <span class="text-[#00aaff] font-bold">INSTRUCTION:</span> ${p.instruction || 'Monitor local updates.'}
+                </div>
+            `;
+            feed.appendChild(card);
         }
 
-        function dispatchUplink(p) {
-            // Discord
-            fetch(UPLINK.WEBHOOK, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-                content: "📡 **CRITICAL NWS UPLINK**",
-                embeds: [{ title: p.event, description: p.headline, color: 16711680 }]
-            })});
-            // Pushover (Android Force)
-            const pushData = new FormData();
-            pushData.append("token", UPLINK.PUSH_TOKEN);
-            pushData.append("user", UPLINK.PUSH_USER);
-            pushData.append("message", p.headline);
-            pushData.append("title", `STATION 768 | ${p.event}`);
-            pushData.append("priority", "2");
-            pushData.append("retry", "60");
-            pushData.append("expire", "3600");
-            fetch("https://api.pushover.net/1/messages.json", { method: 'POST', body: pushData });
+        async function broadcastUplink(p) {
+            // FIX: Discord Embed Headers
+            const body = {
+                content: `🚨 **CRITICAL UPLINK** ${UPLINK.ROLE}`,
+                embeds: [{
+                    title: p.event,
+                    description: `**Headline:** ${p.headline}\n\n**Action:** ${p.instruction || 'Monitor media.'}`,
+                    color: 16711680,
+                    footer: { text: "STATION #768 RELAY" }
+                }]
+            };
+
+            fetch(UPLINK.WEBHOOK, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            fetch(UPLINK.NTFY, {
+                method: 'POST',
+                body: `EVENT: ${p.event}\n\n${p.instruction}`,
+                headers: { "Title": "STATION #768 EMERGENCY", "Priority": "5", "Tags": "rotating_light" }
+            });
         }
 
         function triggerPanic() {
-            logToTerminal("PANIC DEPLOYED.");
-            fetch(`https://ntfy.sh/${UPLINK.NTFY_TOPIC}`, { method: 'POST', body: "PANIC!", headers: { "Priority": "5" } });
+            logToTerminal("GLOBAL PANIC BROADCAST DISPATCHED.");
+            fetch(UPLINK.WEBHOOK, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ content: "🚨 **STATION 768 PANIC TRIGGERED**" })});
+            fetch(UPLINK.NTFY, { method: 'POST', body: "PANIC!", headers: { "Priority": "5" } });
         }
 
-        // Clock
+        function openAdmin() {
+            const code = prompt("ADMIN CODE:");
+            if (code === ADMIN_PIN) document.getElementById('admin-area').classList.remove('hidden');
+        }
+
+        function closeAdmin() { document.getElementById('admin-area').classList.add('hidden'); }
+
+        async function dispatchAdminAlert() {
+            const title = document.getElementById('admin-title').value;
+            const msg = document.getElementById('admin-msg').value;
+            fetch(UPLINK.WEBHOOK, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                content: "🛡️ **ADMIN BROADCAST**",
+                embeds: [{ title: title, description: msg, color: 3447003 }]
+            })});
+            closeAdmin();
+        }
+
+        // UPTIME
         let start = Date.now();
         setInterval(() => {
             const d = Math.floor((Date.now() - start) / 1000);
