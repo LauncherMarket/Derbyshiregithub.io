@@ -1,128 +1,175 @@
-import customtkinter as ctk
-import requests
-from datetime import datetime
-import threading
-import time
-
-# --- SYSTEM THEME ---
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("blue")
-
-class ApexUnifiedHub(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-
-        # --- HUB CONFIGURATION ---
-        self.title("STATION #768 | UNIFIED INTELLIGENCE")
-        self.geometry("800x1000")
-        self.PIN = "0083"
-
-        # --- UPLINK KEYS ---
-        self.WEBHOOK = "https://discord.com/api/webhooks/1475098952779956265/XmjswNOWI1xFlybXl7mSgAgHQvMyJr8UALejPWdx7mLSJL8IsUfNDI1cflub9wmBgowG"
-        self.ROLE = "<@&14749276126260027505>"
-        self.PUSH_USER = "uswuuq7126iw6if6stqx66ytjzi171"
-        self.PUSH_TOKEN = "aa9a5wi8ag5pn2uxcg5f6c3acqsg3w"
-        
-        self.setup_auth()
-
-    def setup_auth(self):
-        self.auth_frame = ctk.CTkFrame(self, corner_radius=20, border_width=2, border_color="#ff4d00")
-        self.auth_frame.place(relx=0.5, rely=0.5, anchor="center")
-        ctk.CTkLabel(self.auth_frame, text="APEX COMMAND #768", font=("Orbitron", 26, "bold"), text_color="#ff4d00").pack(pady=20, padx=40)
-        self.pin_entry = ctk.CTkEntry(self.auth_frame, placeholder_text="STATION PIN", show="*", width=150, font=("Arial", 24), justify="center")
-        self.pin_entry.pack(pady=30)
-        ctk.CTkButton(self.auth_frame, text="AUTHORIZE", fg_color="#ff4d00", text_color="black", command=self.authorize).pack(pady=20)
-
-    def authorize(self):
-        if self.pin_entry.get() == self.PIN:
-            self.auth_frame.destroy()
-            self.setup_main_interface()
-        else:
-            self.log("AUTH ERROR: ACCESS DENIED.")
-
-    def setup_main_interface(self):
-        self.header = ctk.CTkLabel(self, text="STATION #768 | MASTER CONTROL", font=("Orbitron", 22, "bold"))
-        self.header.pack(pady=20)
-
-        # Unified Terminal
-        self.terminal = ctk.CTkTextbox(self, height=450, corner_radius=15, border_width=2, border_color="#333", font=("Consolas", 12), text_color="#00ff9d")
-        self.terminal.pack(padx=30, pady=10, fill="x")
-        self.log("SYSTEM ARMED. ANDROID EMERGENCY FORCE ACTIVE.")
-
-        # Controls
-        self.btn_grid = ctk.CTkFrame(self, fg_color="transparent")
-        self.btn_grid.pack(pady=10)
-        self.add_btn("📡 SYNC NWS (FL+DC)", "#3498db", self.sync_all_nws, 0, 0)
-        self.add_btn("✅ STATUS: SAFE", "#2ecc71", lambda: self.dispatch_force("STATUS", "Yan is SAFE", p=0), 0, 1)
-        self.add_btn("🚨 TRIGGER PANIC", "#e74c3c", self.panic_sequence, 1, 0)
-
-    def add_btn(self, text, color, cmd, r, c):
-        ctk.CTkButton(self.btn_grid, text=text, fg_color=color, font=("Roboto", 12, "bold"), width=240, height=60, command=cmd).grid(row=r, column=c, padx=10, pady=10)
-
-    def log(self, msg):
-        self.terminal.insert("1.0", f"[{datetime.now().strftime('%H:%M:%S')}] {msg}\n")
-
-    # --- UNIFIED SYNC LOGIC ---
-    def sync_all_nws(self):
-        """Pulls from both Florida and Washington OPC Zones"""
-        self.log("POLLING GLOBAL NWS API SECTORS...")
-        
-        try:
-            # Sector 1: Florida Land (Active Alerts)
-            fl_data = requests.get("https://api.weather.gov/alerts/active?area=FL").json().get('features', [])
-            # Sector 2: Washington OPC Marine (Zone ANZ925)
-            dc_data = requests.get("https://api.weather.gov/alerts/active?zone=ANZ925").json().get('features', [])
-            
-            combined = fl_data + dc_data
-            if not combined:
-                self.log("SCAN COMPLETE: NO ACTIVE THREATS.")
-                return
-
-            for alert in combined[:3]:
-                props = alert['properties']
-                event = props.get('event')
-                headline = props.get('headline')
-                severity = props.get('severity', 'Moderate')
-                
-                self.log(f"ALERT DETECTED: {event} ({severity})")
-                
-                # Priority Logic
-                p_level = 2 if (severity in ['Extreme', 'Severe'] or "Hurricane" in event) else 1
-                self.dispatch_force(event, headline, p=p_level)
-
-        except Exception as e:
-            self.log(f"API ERROR: {str(e)}")
-
-    def dispatch_force(self, title, message, p=1):
-        """Unified Dispatch to Discord and Android Emergency Override"""
-        # 1. Discord Dispatch
-        payload = {
-            "content": f"📡 **STATION 768 UNIFIED UPLINK** {self.ROLE}",
-            "embeds": [{"title": title, "description": message, "color": 16729856 if p > 1 else 3447003}]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STATION #768 | v6.0 APEX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --apex-orange: #ff4d00; --safety-green: #00ff9d; --hurricane-red: #ff0033; }
+        body { 
+            background: radial-gradient(circle at center, #0a0a0f 0%, #020205 100%);
+            color: #f0f0f0; font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-        requests.post(self.WEBHOOK, json=payload)
-
-        # 2. Android Force Dispatch (Pushover)
-        push_data = {
-            "token": self.PUSH_TOKEN,
-            "user": self.PUSH_USER,
-            "message": f"<b>{title}</b>\n{message}",
-            "html": 1,
-            "priority": p,
-            "sound": "emergency" if p == 2 else "climb",
-            "url": "https://www.weather.gov/mfl/",
-            "url_title": "VIEW SECTOR DATA"
+        .header-font { font-family: 'Orbitron', sans-serif; }
+        .glass {
+            background: rgba(15, 15, 25, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
         }
-        if p == 2: # Required for Emergency Overrides
-            push_data.update({"retry": 30, "expire": 3600})
+        .glow-text { text-shadow: 0 0 10px rgba(255, 77, 0, 0.5); }
+        .alert-pulse { animation: pulse-red 1.2s infinite; }
+        @keyframes pulse-red { 0%, 100% { border-color: #ff0033; box-shadow: 0 0 10px rgba(255,0,0,0.3); } 50% { border-color: #330000; } }
+        .btn-action { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-action:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div id="auth-frame" class="fixed inset-0 flex items-center justify-center bg-[#020205] z-[1000] p-6">
+        <div class="w-full max-w-sm glass p-8 rounded-3xl text-center border border-[#ff4d00]">
+            <h1 class="header-font text-3xl font-black italic tracking-tighter glow-text">APEX #768</h1>
+            <input type="password" id="pin-entry" inputmode="numeric" placeholder="••••" 
+                   class="w-full bg-black/40 border-2 border-zinc-800 rounded-2xl p-4 text-3xl text-center my-6 text-white outline-none focus:border-[#ff4d00]">
+            <button onclick="authorize()" class="w-full bg-[#ff4d00] text-black font-black py-4 rounded-2xl uppercase text-xs tracking-widest">Authorize Station</button>
+        </div>
+    </div>
+
+    <div id="main-interface" class="hidden flex flex-col min-h-screen">
+        <nav class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-zinc-800">
+            <div class="flex flex-col">
+                <span class="header-font text-lg font-black italic">STATION <span class="text-[#ff4d00]">768</span></span>
+                <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-[#00ff9d] animate-pulse"></span><span class="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">DC/FLORIDA LINK LIVE</span></span>
+            </div>
+            <div class="text-right">
+                <p id="uptime-clock" class="header-font text-xs font-bold text-white tracking-widest">00:00:00</p>
+            </div>
+        </nav>
+
+        <main class="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full space-y-6">
+            <section>
+                <h2 class="header-font text-xs font-bold text-zinc-400 tracking-[0.2em] uppercase italic mb-4">Threat Matrix</h2>
+                <div id="alert-feed" class="space-y-4">
+                    <div class="glass p-8 rounded-3xl text-center text-zinc-600 italic text-sm border-dashed border-2 border-zinc-800">Scanning NWS API Channels...</div>
+                </div>
+            </section>
+
+            <section class="space-y-4">
+                <h2 class="header-font text-xs font-bold text-zinc-400 tracking-[0.2em] uppercase italic px-2">Encrypted Stream</h2>
+                <div id="terminal" class="glass rounded-3xl p-5 h-44 overflow-y-auto font-mono text-[10px] leading-relaxed border-zinc-800/50">
+                    <div id="log-container" class="flex flex-col-reverse gap-1.5"></div>
+                </div>
+            </section>
+        </main>
+
+        <div class="glass sticky bottom-0 p-4 border-t border-zinc-800 flex justify-around items-center gap-3">
+            <button onclick="syncAllSectors()" class="btn-action flex-1 py-4 rounded-2xl flex flex-col items-center gap-1 border border-zinc-800/50">
+                <span class="text-xl">📡</span><span class="text-[8px] font-black uppercase tracking-tighter">Sync Matrix</span>
+            </button>
+            <button onclick="triggerPanic()" class="btn-action flex-1 py-4 rounded-2xl flex flex-col items-center gap-1 border border-red-900/30 bg-red-950/10">
+                <span class="text-xl">🚨</span><span class="text-[8px] font-black text-red-500 uppercase tracking-tighter">Panic</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const PIN = "0083";
+        const UPLINK = {
+            WEBHOOK: "https://discord.com/api/webhooks/1475098952779956265/XmjswNOWI1xFlybXl7mSgAgHQvMyJr8UALejPWdx7mLSJL8IsUfNDI1cflub9wmBgowG",
+            PUSH_USER: "uswuuq7126iw6if6stqx66ytjzi171",
+            PUSH_TOKEN: "aa9a5wi8ag5pn2uxcg5f6c3acqsg3w",
+            NTFY_TOPIC: "fuckernig"
+        };
+
+        function authorize() {
+            if (document.getElementById('pin-entry').value === PIN) {
+                document.getElementById('auth-frame').style.display = 'none';
+                document.getElementById('main-interface').classList.remove('hidden');
+                logToTerminal("UPLINK SECURED. POLLING SECTORS: FL, DC-ANZ925.");
+                syncAllSectors();
+                setInterval(syncAllSectors, 120000); // Auto-sync every 2 mins
+            }
+        }
+
+        function logToTerminal(msg) {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span class="text-zinc-600">[${new Date().toLocaleTimeString()}]</span> <span class="text-[#ff4d00]">></span> <span class="text-zinc-300">${msg}</span>`;
+            container.appendChild(entry);
+        }
+
+        async function syncAllSectors() {
+            logToTerminal("POLLING NWS SECTORS...");
+            try {
+                const [fl, dc] = await Promise.all([
+                    fetch("https://api.weather.gov/alerts/active?area=FL").then(r => r.json()),
+                    fetch("https://api.weather.gov/alerts/active?zone=ANZ925").then(r => r.json())
+                ]);
+                const combined = [...(fl.features || []), ...(dc.features || [])];
+                updateMatrix(combined);
+            } catch (e) { logToTerminal("API ERROR: LINK TIMEOUT."); }
+        }
+
+        function updateMatrix(alerts) {
+            const feed = document.getElementById('alert-feed');
+            feed.innerHTML = '';
             
-        requests.post("https://api.pushover.net/1/messages.json", data=push_data)
-        self.log(f"UPLINK DISPATCHED: {title}")
+            if (!alerts.length) {
+                feed.innerHTML = '<div class="glass p-8 rounded-3xl text-center text-zinc-600 italic text-sm italic">No active threats detected.</div>';
+                return;
+            }
 
-    def panic_sequence(self):
-        self.log("CRITICAL: PANIC TRIGGERED.")
-        self.dispatch_force("CIVIL EMERGENCY", "STATION 768 PANIC TRIGGERED. PERSONNEL IN DANGER.", p=2)
+            alerts.slice(0, 5).forEach(a => {
+                const p = a.properties;
+                const isExtreme = p.severity === 'Extreme' || p.event.includes('Hurricane');
+                const card = document.createElement('div');
+                card.className = `glass p-6 rounded-[2rem] border-l-4 ${isExtreme ? 'border-red-600 alert-pulse' : 'border-orange-500'} mb-4`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[7px] font-black uppercase text-zinc-500">${p.areaDesc.split(';')[0]}</span>
+                        <span class="text-[7px] font-bold text-[#ff4d00] italic">${p.severity}</span>
+                    </div>
+                    <h4 class="text-sm font-black text-white uppercase italic">${p.event}</h4>
+                    <p class="text-[10px] text-zinc-400 mt-2 leading-tight">${p.headline}</p>
+                `;
+                feed.appendChild(card);
+                if (isExtreme) dispatchUplink(p);
+            });
+            logToTerminal(`MATRIX UPDATED: ${alerts.length} TARGETS LOADED.`);
+        }
 
-if __name__ == "__main__":
-    app = ApexUnifiedHub()
-    app.mainloop()
+        function dispatchUplink(p) {
+            // Discord
+            fetch(UPLINK.WEBHOOK, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+                content: "📡 **CRITICAL NWS UPLINK**",
+                embeds: [{ title: p.event, description: p.headline, color: 16711680 }]
+            })});
+            // Pushover (Android Force)
+            const pushData = new FormData();
+            pushData.append("token", UPLINK.PUSH_TOKEN);
+            pushData.append("user", UPLINK.PUSH_USER);
+            pushData.append("message", p.headline);
+            pushData.append("title", `STATION 768 | ${p.event}`);
+            pushData.append("priority", "2");
+            pushData.append("retry", "60");
+            pushData.append("expire", "3600");
+            fetch("https://api.pushover.net/1/messages.json", { method: 'POST', body: pushData });
+        }
+
+        function triggerPanic() {
+            logToTerminal("PANIC DEPLOYED.");
+            fetch(`https://ntfy.sh/${UPLINK.NTFY_TOPIC}`, { method: 'POST', body: "PANIC!", headers: { "Priority": "5" } });
+        }
+
+        // Clock
+        let start = Date.now();
+        setInterval(() => {
+            const d = Math.floor((Date.now() - start) / 1000);
+            document.getElementById('uptime-clock').innerText = new Date(d * 1000).toISOString().substr(11, 8);
+        }, 1000);
+    </script>
+</body>
+</html>
