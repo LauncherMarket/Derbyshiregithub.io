@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derbyshire Dev | Release Portal</title>
+    <style>
+        :root {
+            --primary: #4a90e2; /* Deep Blue */
+            --accent: #00d2ff;  /* Sky Blue */
+            --glass: rgba(10, 10, 15, 0.85);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body { 
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            height: 100vh;
+            background: #050505;
+            color: white;
+        }
+
+        .bg-wrapper {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
+                        url('http://googleusercontent.com/image_collection/image_retrieval/3873916948710654792_0');
+            background-size: cover;
+            background-position: center;
+            animation: slowPan 40s infinite alternate ease-in-out;
+        }
+
+        @keyframes slowPan {
+            from { transform: scale(1.0); }
+            to { transform: scale(1.1); }
+        }
+
+        .card { 
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            padding: 40px; 
+            border-radius: 20px; 
+            width: 440px; 
+            border: 1px solid var(--border);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        h2 { 
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700; 
+            letter-spacing: 3px;
+            text-align: center;
+            background: linear-gradient(90deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #666;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .input-group { margin-top: 15px; }
+
+        label { 
+            display: block;
+            font-size: 10px; 
+            color: var(--accent); 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            margin-bottom: 6px;
+            letter-spacing: 1.5px;
+        }
+
+        input, textarea { 
+            width: 100%; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border);
+            box-sizing: border-box; 
+            background: rgba(255, 255, 255, 0.03); 
+            color: #fff; 
+            font-size: 14px;
+            transition: 0.2s ease;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        button { 
+            width: 100%; 
+            padding: 16px; 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            letter-spacing: 1px;
+            margin-top: 25px; 
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        button:hover { 
+            background: var(--accent); 
+            color: #000;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 210, 255, 0.3);
+        }
+
+        .ip-box {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 9px;
+            color: #888;
+            border: 1px solid var(--border);
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-wrapper"></div>
+
+<div class="card">
+    <div class="ip-box" id="displayIP">...</div>
+    <h2>DERBYSHIRE DEV</h2>
+    <div class="subtitle">Internal Deployment Portal</div>
+    
+    <div class="input-group">
+        <label>Release Version</label>
+        <input type="text" id="version" placeholder="Build Identifier">
+    </div>
+    
+    <div class="input-group">
+        <label>Deployment Summary</label>
+        <textarea id="notes" rows="4" placeholder="Enter changelog details..."></textarea>
+    </div>
+    
+    <div class="input-group">
+        <label>Media Attachments (Images/Video)</label>
+        <input type="file" id="mediaFiles" accept="image/*,video/*" multiple>
+    </div>
+    
+    <button onclick="sendAnnouncement()">Publish Release</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    let userIP = "Unknown";
+
+    window.onload = async () => {
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            userIP = data.ip;
+            document.getElementById('displayIP').innerText = userIP;
+        } catch (e) {
+            document.getElementById('displayIP').innerText = "0.0.0.0";
+        }
+    };
+
+    async function sendAnnouncement() {
+        const webhookUrl = "https://discord.com/api/webhooks/1475699263248797717/09uK9ieiAc-3ber8UzQGKfFA0DXYRb0Z3NXoYMY4plMA_PGg_hsrjhrr854LFS4ZA37D";
+       const v = document.getElementById('version').value;
+        const n = document.getElementById('notes').value;
+        const fileInput = document.getElementById('mediaFiles');
+        const status = document.getElementById('status');
+
+        if (!v || !n) {
+            status.innerHTML = "<span style='color: #ff4757;'>MISSING REQUIRED DATA</span>";
+            return;
+        }
+
+        status.innerHTML = "<span style='color: var(--accent);'>SYNCING WITH DISCORD...</span>";
+
+        const formData = new FormData();
+        
+        // We create an array of embeds
+        const embeds = [
+            {
+                title: "📦 NEW DEPLOYMENT: " + v,
+                description: "```fix\n" + n + "```",
+                color: 4886754,
+                footer: { text: "Uplink Database By Yan :)" }
+            }
+        ];
+
+        // If files exist, we attach them and link them to additional embeds
+        if (fileInput.files.length > 0) {
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const fileName = `file${i}.png`;
+                formData.append(`file${i}`, fileInput.files[i], fileName);
+                
+                // The first image goes in the main embed
+                if (i === 0) {
+                    embeds[0].image = { url: `attachment://${fileName}` };
+                } else {
+                    // Additional images get their own "seamless" embed
+                    embeds.push({
+                        url: "https://derbyshire.dev", // Keeps them grouped
+                        image: { url: `attachment://${fileName}` },
+                        color: 4886754
+                    });
+                }
+            }
+        }
+
+        const payload = {
+            username: "Derbyshire Dev Portal",
+            embeds: embeds
+        };
+        
+        formData.append('payload_json', JSON.stringify(payload));
+
+        try {
+            const response = await fetch(webhookUrl, { method: 'POST', body: formData });
+            if (response.ok) {
+                status.innerHTML = "<span style='color: #00ff7f;'>TRANSMISSION SUCCESSFUL</span>";
+                document.getElementById('version').value = '';
+                document.getElementById('notes').value = '';
+                fileInput.value = '';
+            } else {
+                status.innerHTML = "<span style='color: #ff4757;'>DEPLOYMENT FAILED</span>";
+            }
+        } catch (error) {
+            status.innerHTML = "<span style='color: #ff4757;'>UPLINK TIMEOUT</span>";
+        }
+    }
+</script>
+
+</body>
+</html>
